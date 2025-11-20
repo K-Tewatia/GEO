@@ -1,0 +1,10 @@
+.env
+GEO-backend/.env
+GEO-frontend/.env
+
+# node modules
+node_modules/
+
+# builds
+dist/
+build/

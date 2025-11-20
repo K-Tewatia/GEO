@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+anthropic
+tavily-python
+mistralai
+plotly
+pandas
+requests
+pydantic

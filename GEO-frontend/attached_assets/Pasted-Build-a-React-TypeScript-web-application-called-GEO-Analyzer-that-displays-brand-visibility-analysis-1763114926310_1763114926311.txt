@@ -1,0 +1,129 @@
+Build a React TypeScript web application called GEO Analyzer that displays brand visibility analysis data from my existing FastAPI backend.
+
+Backend API Details
+Base URL: http://localhost:8000
+
+CORS enabled for all origins
+
+Main endpoints:
+
+POST /api/analysis/run - Start analysis (body: {brand_name, product_name, website_url, num_prompts: 10, selected_llms: []})
+
+GET /api/analysis/status/{session_id} - Check progress (returns: {progress, current_step, status})
+
+GET /api/results/{session_id} - Get results (returns full analysis data)
+
+Page Layout Requirements
+1. Header
+Large headline: "GEO Analyzer"
+
+Subtitle explaining the tool
+
+2. Input Form (4 fields)
+Brand Name (required text input)
+
+Product Description (optional text input) - map this to product_name in API
+
+Website URL (optional URL input)
+
+Industry (optional text input) - also map to product_name in API
+
+3. LLM Selection
+Checkboxes/toggles for: Claude, Mistral, Google AI Overview, ChatGPT, Perplexity, Gemini
+
+Map these to selected_llms array in API
+
+Validation: at least 1 must be selected
+
+"Start Analysis" button (disabled until brand name + 1 LLM selected)
+
+4. Loading State
+Poll /api/analysis/status/{session_id} every 2 seconds while running
+
+Show progress bar (0-100%) and current step text
+
+Stop polling when status is "completed"
+
+5. Results Dashboard (after completion)
+A. Summary Metrics (4 cards)
+
+Analyzed Prompts: metrics.total_prompts
+
+Brand Mentions: brand_scores[0].mention_count
+
+Average Position: brand_scores[0].average_position
+
+Average Visibility: brand_scores[0].visibility_score
+
+B. Analyzed Prompts Table
+Columns: Prompt | Source (LLM) | Citation | Average Visibility
+
+Data from llm_responses array
+
+Add pagination, search by LLM
+
+C. Visibility Over Time Line Chart
+
+X-axis: Prompt sequence (1, 2, 3...) or timestamps if available
+
+Y-axis: Visibility score
+
+Plot brand visibility trend
+
+Use Recharts library
+
+D. Share of Voice Pie Chart
+
+Data from share_of_voice array
+
+Show brand name + percentage for each slice
+
+Use Recharts
+
+E. Top Cited Domains Table
+
+Data from domain_citations array
+
+Columns: Domain | Count | Percentage
+
+Show "No citation data" if empty
+
+Technical Stack
+React with TypeScript
+
+Tailwind CSS for styling
+
+Recharts for charts
+
+Axios for API calls
+
+Use React hooks (useState, useEffect) for state
+
+Design Style
+Modern, clean card-based layout
+
+Primary color: Blue (#3B82F6)
+
+White cards with subtle shadows
+
+Max width 1200px, centered
+
+Mobile responsive (stack sections on small screens)
+
+Key Functionality
+Form submission → POST to /api/analysis/run → receive session_id
+
+Start polling status endpoint → update progress bar
+
+On completion → GET results endpoint → display all sections
+
+Handle errors with user-friendly messages and retry option
+
+Data Mapping Notes
+Map "Industry" input field to backend's product_name parameter
+
+selected_llms must match backend's accepted LLM names exactly: "Claude", "Mistral", "Google AI Overview"
+
+Results structure has session, llm_responses, brand_scores, share_of_voice, domain_citations, competitors, metrics objects
+
+Create the complete React app with all components, API integration, charts, and responsive design. Make it production-ready and visually polished.
