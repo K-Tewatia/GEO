@@ -666,8 +666,8 @@ def get_saved_prompts_for_analysis(session_id: str):
 
 def get_visibility_history_for_same_prompts(brand_name: str, product_name: str, prompts: list):
     """
-    Get visibility history for the same set of prompts over time
-    ✅ FIXED: Matches by brand_name and prompts only, groups by DATE (not datetime)
+    Get visibility history for the same set of prompts over time.
+    FIXED: Groups by SESSION instead of DATE to show each re-analysis separately.
     """
     conn = sqlite3.connect(DATABASE_PATH)
     conn.row_factory = sqlite3.Row
@@ -684,18 +684,20 @@ def get_visibility_history_for_same_prompts(brand_name: str, product_name: str, 
         
         placeholders = ','.join(['?' for _ in prompts])
         
-        # Match by brand_name and prompts only (across all dates)
+        # Query to get all sessions with matching brand and prompts
+        # Group by session and timestamp to get each re-analysis separately
         query = f"""
             SELECT 
-                sr.normalized_visibility as visibility_score,
-                s.timestamp,
                 s.session_id,
-                lr.prompt_text
+                s.timestamp,
+                AVG(sr.normalized_visibility) AS avg_visibility
             FROM scoring_results sr
             JOIN analysis_sessions s ON sr.session_id = s.session_id
             JOIN llm_responses lr ON lr.prompt_id = sr.prompt_id AND lr.session_id = sr.session_id
             WHERE s.brand_name = ?
               AND lr.prompt_text IN ({placeholders})
+              AND sr.llm_name != 'SUMMARY'
+            GROUP BY s.session_id, s.timestamp
             ORDER BY s.timestamp ASC
         """
         
@@ -708,33 +710,25 @@ def get_visibility_history_for_same_prompts(brand_name: str, product_name: str, 
             logger.info(f"No historical data found for same prompts (brand: {brand_name}, prompts: {len(prompts)})")
             return []
         
-        # ✅ CRITICAL FIX: Extract date STRING (not list!) from timestamp
-        history = {}
+        # Format each session as a separate data point with datetime info
+        chart_data = []
         for row in results:
-            # timestamp is like "2024-11-19T15:30:00"
-            # split('T') returns ['2024-11-19', '15:30:00']
-            # We need [0] to get JUST the date string: '2024-11-19'
             timestamp = row['timestamp']
             if 'T' in timestamp:
-                date = timestamp.split('T')[0]  # ✅ Extract date part as STRING
+                date_display = timestamp.split('T')[0]
+                time_display = timestamp.split('T')[1][:5]  # HH:MM
             else:
-                date = timestamp.split(' ')[0]  # Handle space separator too
+                date_display = timestamp.split(' ')[0]
+                time_display = timestamp.split(' ')[1][:5] if ' ' in timestamp else '00:00'
             
-            if date not in history:
-                history[date] = []
-            history[date].append(row['visibility_score'])
-        
-        # Calculate average visibility per date
-        chart_data = []
-        for date, scores in sorted(history.items()):
-            avg_visibility = round(sum(scores) / len(scores), 2)
             chart_data.append({
-                'date': date,
-                'visibility': avg_visibility,
-                'timestamp': date
+                'date': f"{date_display} {time_display}",  # e.g. "2024-11-20 09:30"
+                'visibility': round(row['avg_visibility'] or 0, 2),
+                'timestamp': timestamp,
+                'session_id': row['session_id']
             })
         
-        logger.info(f"✓ Found {len(chart_data)} date points for same prompts history (brand: {brand_name}, unique dates: {len(history)}, total sessions: {len(set(r['session_id'] for r in results))})")
+        logger.info(f"✓ Found {len(chart_data)} session points for same prompts history (brand: {brand_name})")
         return chart_data
         
     except Exception as e:
@@ -742,7 +736,6 @@ def get_visibility_history_for_same_prompts(brand_name: str, product_name: str, 
         return []
     finally:
         conn.close()
-
 
 def get_product_specific_visibility_history(brand_name: str, product_name: str):
     """
