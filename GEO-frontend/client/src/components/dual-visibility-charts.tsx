@@ -138,11 +138,14 @@ export function DualVisibilityCharts({
         <ResponsiveContainer width="100%" height={280}>
           <LineChart data={data} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis
-              dataKey="date"
-              style={{ fontSize: "11px" }}
-              tick={{ fill: "#666" }}
+            <XAxis 
+              dataKey="date" 
+              style={{ fontSize: '10px' }} 
+              tick={{ fill: '#666' }} 
               tickMargin={10}
+              angle={-45}
+              textAnchor="end"
+              height={80}
             />
             <YAxis
               domain={[0, 100]}

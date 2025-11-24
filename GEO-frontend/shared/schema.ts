@@ -3,7 +3,7 @@ import { z } from "zod";
 // Analysis Request Schema
 export const analysisRequestSchema = z.object({
   brand_name: z.string().min(1, "Brand name is required"),
-  product_description: z.string().optional(),
+  product_name: z.string().optional(),
   industry: z.string().optional(),
   website_url: z.string().url().optional().or(z.literal("")),
   num_prompts: z.number().int().min(1).max(50).default(10),
@@ -120,7 +120,7 @@ export interface AnalysisSession {
 export interface AnalysisResults {
   session_id: string;
   brand_name: string;
-  product_description: string;
+  product_name: string;
   industry: string;
   website_url: string;
   num_prompts: number;
@@ -136,7 +136,6 @@ export interface AnalysisResults {
   keywords: Keywords;
   competitors: Competitor[];
   metrics: Metrics;
-  product_name?: string;
 }
 
 // Visibility History Point Interface (for charts)

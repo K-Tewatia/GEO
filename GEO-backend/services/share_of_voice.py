@@ -2,6 +2,7 @@ from typing import List, Dict, Any
 import statistics
 from dotenv import load_dotenv
 load_dotenv()
+
 def calculate_share_of_voice(brand_results: List[Dict[str, Any]], competitors: List[str]) -> Dict[str, Any]:
     """
     Perform Share of Voice Analysis comparing brand against competitors
@@ -26,21 +27,26 @@ def calculate_share_of_voice(brand_results: List[Dict[str, Any]], competitors: L
         competitor_metrics = analyze_competitor_from_responses(brand_results, competitor)
         all_brands.append(competitor_metrics)
     
+    # Calculate normalized share percentages based on normalized_visibility
+    total_normalized_visibility = sum(b['normalized_visibility'] for b in all_brands)
+    
+    if total_normalized_visibility > 0:
+        for brand in all_brands:
+            # Recalculate normalized_visibility as percentage of total
+            brand['share_percentage'] = round((brand['normalized_visibility'] / total_normalized_visibility) * 100, 2)
+            # Override normalized_visibility with the new percentage value
+            brand['normalized_visibility'] = brand['share_percentage']
+    else:
+        for brand in all_brands:
+            brand['share_percentage'] = 0
+            brand['normalized_visibility'] = 0
+    
     # Rank brands by weighted score
     ranked_brands = sorted(all_brands, key=lambda x: x['weighted_score'], reverse=True)
     
     # Add rank information
     for rank, brand in enumerate(ranked_brands, 1):
         brand['rank'] = rank
-    
-    # Calculate share percentages
-    total_weighted_score = sum(b['weighted_score'] for b in ranked_brands)
-    if total_weighted_score > 0:
-        for brand in ranked_brands:
-            brand['share_percentage'] = round((brand['weighted_score'] / total_weighted_score) * 100, 2)
-    else:
-        for brand in ranked_brands:
-            brand['share_percentage'] = 0
     
     return {
         'ranked_brands': ranked_brands,

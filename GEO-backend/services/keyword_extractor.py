@@ -9,7 +9,7 @@ MISTRAL_API_KEY = os.environ.get("MISTRAL_API_KEY")
 mistral_client = Mistral(api_key=MISTRAL_API_KEY)
 
 def extract_keywords(brand_name: str, research_data: Dict[str, Any], 
-                    product_name: str = None, num_keywords: int = 35) -> List[str]:
+                    product_name: str = None, industry: str = None, num_keywords: int = 35) -> List[str]:  # ✅ ADDED industry param
     """
     Extract 30-40 SEO-friendly keywords using Mistral LLM
     
@@ -17,6 +17,7 @@ def extract_keywords(brand_name: str, research_data: Dict[str, Any],
         brand_name: The brand name
         research_data: Deep research data from Tavily
         product_name: Optional product name/description
+        industry: Optional industry context
         num_keywords: Number of keywords to extract (default: 35)
     
     Returns:
@@ -28,6 +29,10 @@ def extract_keywords(brand_name: str, research_data: Dict[str, Any],
     
     if product_name:
         context += f"Product: {product_name}\n"
+    
+    # ✅ ADDED: Include industry if provided
+    if industry:
+        context += f"Industry: {industry}\n"
     
     if research_data.get('brand_category'):
         context += f"Category: {research_data['brand_category']}\n"
@@ -47,12 +52,13 @@ def extract_keywords(brand_name: str, research_data: Dict[str, Any],
     if research_data.get('trends'):
         context += f"Industry Trends: {research_data['trends'][:300]}\n"
     
+    # ✅ ENHANCED: Mention industry in the prompt
+    industry_mention = f" in the {industry} industry" if industry else ""
+    
     # Create prompt for Mistral
-    prompt = f"""Based on the following brand and product information, extract {num_keywords} SEO-friendly keywords that are highly relevant for organic search visibility analysis.
-
+    prompt = f"""Based on the following brand and product information{industry_mention}, extract {num_keywords} SEO-friendly keywords that are highly relevant for organic search visibility analysis.
 
 {context}
-
 
 Requirements for keywords:
 1. Mix of broad industry terms and specific product/brand related terms
@@ -64,13 +70,11 @@ Requirements for keywords:
 7. Keywords should be 1-4 words each
 8. Do NOT include the brand name in the keywords (we're testing organic visibility)
 
-
 Provide exactly {num_keywords} keywords, one per line, without numbering or bullet points. Just the keywords."""
-
 
     try:
         # Call Mistral API using compatible chat method
-        response = mistral_client.chat.create(
+        response = mistral_client.chat(
             model="mistral-small-latest",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7,
@@ -92,20 +96,27 @@ Provide exactly {num_keywords} keywords, one per line, without numbering or bull
         # Ensure we have the requested number of keywords
         if len(cleaned_keywords) < num_keywords:
             # Add generic fallback keywords if needed
-            cleaned_keywords.extend(get_fallback_keywords(brand_name, research_data, num_keywords - len(cleaned_keywords)))
+            cleaned_keywords.extend(get_fallback_keywords(brand_name, research_data, industry, num_keywords - len(cleaned_keywords)))  # ✅ Pass industry
         
         return cleaned_keywords[:num_keywords]
     
     except Exception as e:
         print(f"Error extracting keywords with Mistral: {str(e)}")
         # Return fallback keywords
-        return get_fallback_keywords(brand_name, research_data, num_keywords)
+        return get_fallback_keywords(brand_name, research_data, industry, num_keywords)
 
 
-def get_fallback_keywords(brand_name: str, research_data: Dict[str, Any], count: int) -> List[str]:
+def get_fallback_keywords(brand_name: str, research_data: Dict[str, Any], industry: str = None, count: int = 35) -> List[str]: 
     """Generate fallback keywords if API fails"""
     fallback_keywords = []
-    
+    if industry:
+        fallback_keywords.extend([
+            f"best {industry} brands",
+            f"top {industry} companies",
+            f"leading {industry} products",
+            f"{industry} market leaders",
+            f"trusted {industry} brands"
+        ])    
     # Extract category-based keywords
     category = research_data.get('brand_category', '')
     if category:

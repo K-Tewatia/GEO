@@ -32,7 +32,7 @@ export function AnalysisForm({ onAnalysisStart, onRecentAnalysisSelect }: Analys
     resolver: zodResolver(analysisRequestSchema),
     defaultValues: {
       brand_name: "",
-      product_description: "",
+      product_name: "",        // Changed from productdescription
       industry: "",
       website_url: "",
       num_prompts: 10,
@@ -108,7 +108,7 @@ export function AnalysisForm({ onAnalysisStart, onRecentAnalysisSelect }: Analys
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormField
                     control={form.control}
-                    name="product_description"
+                    name="product_name"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Product Description</FormLabel>

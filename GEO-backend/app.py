@@ -62,10 +62,11 @@ analysis_progress = {}
 class AnalysisRequest(BaseModel):
     brand_name: str
     product_name: Optional[str] = None
+    industry: Optional[str] = None
     website_url: Optional[str] = None
     num_prompts: int = 10
     selected_llms: List[str]
-    regenerate_prompts: bool = False
+    regenerate_prompts: bool = True
 
 # ============= API ENDPOINTS =============
 
@@ -128,6 +129,7 @@ async def run_analysis(request: AnalysisRequest, background_tasks: BackgroundTas
             session_id,
             request.brand_name,
             request.product_name,
+            request.industry,
             request.website_url,
             request.num_prompts,
             normalized_llms,
@@ -199,46 +201,32 @@ async def execute_analysis_workflow(
     session_id: str,
     brand_name: str,
     product_name: Optional[str],
+    industry: Optional[str],
     website_url: Optional[str],
     num_prompts: int,
     selected_llms: List[str],
-    regenerate_prompts: bool = False
+    regenerate_prompts: bool = True
 ):
     """Execute the complete analysis workflow"""
     try:
         # Step 1: Deep Research (10%)
         update_progress(session_id, 10, "🔍 Conducting market research...")
         logger.info(f"Step 1: Deep Research for {brand_name}")
-        research_data = conduct_deep_research(brand_name, product_name, website_url)
+        research_data = conduct_deep_research(brand_name, product_name, website_url, industry)
         
         # Step 2: Keyword Extraction (20%)
         update_progress(session_id, 20, "🔑 Extracting keywords...")
         logger.info("Step 2: Keyword Extraction")
-        keywords = extract_keywords(brand_name, research_data, product_name)
+        keywords = extract_keywords(brand_name, research_data, product_name, industry)
         
         # Step 3: Prompt Generation/Loading (30%)
-        update_progress(session_id, 30, "📝 Checking for saved prompts...")
-        logger.info("Step 3: Prompt Generation/Loading")
-        
         prompts = None
-        
-        # Check if we should use saved prompts
-        if not regenerate_prompts:
-            from services.database_manager import get_saved_prompts
-            prompts = get_saved_prompts(brand_name, product_name)
-            
-            if prompts:
-                logger.info(f"✅ Using {len(prompts)} saved prompts from database")
-                update_progress(session_id, 30, "✅ Loaded saved prompts!")
-            else:
-                logger.info("No saved prompts found, generating new ones...")
-        else:
-            logger.info("🔄 Regenerate flag enabled, generating new prompts...")
+        logger.info("🔄 Regenerate flag enabled, generating new prompts...")
         
         # Generate new prompts if needed
         if not prompts:
             update_progress(session_id, 30, "📝 Generating new prompts...")
-            prompts = generate_prompts(brand_name, num_prompts, research_data, keywords)
+            prompts = generate_prompts(brand_name, num_prompts, research_data, keywords, industry)
             
             if not prompts:
                 raise Exception("Failed to generate prompts")
@@ -248,7 +236,7 @@ async def execute_analysis_workflow(
             save_prompts_to_db(brand_name, prompts, product_name)
             logger.info(f"💾 Saved {len(prompts)} new prompts to database")
             # Save session metadata
-        save_session(session_id, brand_name, product_name, website_url, research_data, keywords)
+        save_session(session_id, brand_name, product_name, website_url, research_data, keywords, industry)
         
         # ✅ ADD THIS CRITICAL LINE - Extract competitors for later use
         competitors_list = research_data.get('competitors', [])
@@ -374,7 +362,7 @@ async def execute_analysis_workflow(
         
         # Aggregate results
         summary = aggregate_results(scored_results)
-        
+        save_brand_score_summary(session_id, brand_name, summary)
         # Step 7: Complete (100%)
         update_progress(session_id, 100, "✅ Analysis complete!")
         analysis_progress[session_id]["status"] = "completed"

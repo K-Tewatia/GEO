@@ -133,6 +133,7 @@ def extract_brand_mentions(response_text, brand_name):
     
     return mentions
 
+
 def get_demo_response(prompt):
     """
     Generate a demo response when API quota is exceeded

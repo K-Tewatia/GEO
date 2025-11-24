@@ -14,7 +14,8 @@ tavily_client = TavilyClient(api_key=TAVILY_API_KEY)
 anthropic_client = Anthropic(api_key=ANTHROPIC_API_KEY) if ANTHROPIC_API_KEY else None
 
 def conduct_deep_research(brand_name: str, product_name: Optional[str] = None, 
-                         website_url: Optional[str] = None) -> Dict[str, Any]:
+                         website_url: Optional[str] = None, 
+                         industry: Optional[str] = None) -> Dict[str, Any]:  # ✅ ADDED industry param
     """
     Conduct extensive web-based deep research using Tavily API
     
@@ -37,16 +38,20 @@ def conduct_deep_research(brand_name: str, product_name: Optional[str] = None,
         'competitors': [],
         'trends': '',
         'technologies': '',
+        'industry': industry or '',  # ✅ Store industry in research data
         'raw_data': []
     }
     
     # Research query 1: Brand overview and category
+    # ✅ ENHANCED: Include industry in query if provided
     query_1 = f"{brand_name}"
     if product_name:
         query_1 += f" {product_name}"
+    if industry:
+        query_1 += f" {industry}"  # ✅ Add industry context
     if website_url:
         query_1 += f" {website_url}"
-    query_1 += " brand category type business model industry"
+    query_1 += " brand category type business model"
     
     try:
         response_1 = tavily_client.search(
@@ -67,7 +72,11 @@ def conduct_deep_research(brand_name: str, product_name: Optional[str] = None,
         print(f"Error in brand overview research: {str(e)}")
     
     # Research query 2: Market reputation and online presence
-    query_2 = f"{brand_name} market reputation reviews customer feedback online presence"
+    query_2 = f"{brand_name}"
+    if industry:
+        query_2 += f" {industry}"  # ✅ Add industry context
+    query_2 += " market reputation reviews customer feedback online presence"
+    
     try:
         response_2 = tavily_client.search(
             query=query_2,
@@ -88,7 +97,11 @@ def conduct_deep_research(brand_name: str, product_name: Optional[str] = None,
     
     # Research query 3: Product-specific insights (if product provided)
     if product_name:
-        query_3 = f"{brand_name} {product_name} features benefits pricing specifications"
+        query_3 = f"{brand_name} {product_name}"
+        if industry:
+            query_3 += f" {industry}"  # ✅ Add industry context
+        query_3 += " features benefits pricing specifications"
+        
         try:
             response_3 = tavily_client.search(
                 query=query_3,
@@ -108,7 +121,11 @@ def conduct_deep_research(brand_name: str, product_name: Optional[str] = None,
             print(f"Error in product research: {str(e)}")
     
     # Research query 4: Pricing structure
-    query_4 = f"{brand_name} pricing cost price range B2C D2C direct to consumer"
+    query_4 = f"{brand_name}"
+    if industry:
+        query_4 += f" {industry}"  # ✅ Add industry context
+    query_4 += " pricing cost price range B2C D2C direct to consumer"
+    
     try:
         response_4 = tavily_client.search(
             query=query_4,
@@ -127,21 +144,21 @@ def conduct_deep_research(brand_name: str, product_name: Optional[str] = None,
     except Exception as e:
         print(f"Error in pricing research: {str(e)}")
     
-    # Research query 5: IMPROVED Competitor Research with Multiple Queries
+    # Research query 5: Competitor Research
     competitors_data = []
     
-    # Multiple competitor search queries for better coverage
+    # ✅ ENHANCED: Use industry in competitor queries
     competitor_queries = [
-        f"{brand_name} competitors alternatives similar companies",
-        f"{brand_name} vs top brands comparison",
-        f"companies similar to {brand_name}",
-        f"{brand_name} industry competitors market leaders"
+        f"{brand_name} {industry if industry else ''} competitors alternatives similar companies",
+        f"{brand_name} vs top {industry if industry else ''} brands comparison",
+        f"companies similar to {brand_name} in {industry if industry else 'market'}",
+        f"{brand_name} {industry if industry else ''} industry competitors market leaders"
     ]
     
     for query in competitor_queries:
         try:
             response = tavily_client.search(
-                query=query,
+                query=query.strip(),  # Remove extra spaces
                 search_depth="advanced",
                 max_results=8,
                 include_answer=True
@@ -163,12 +180,15 @@ def conduct_deep_research(brand_name: str, product_name: Optional[str] = None,
     research_results['competitors'] = extract_competitors_with_llm(
         brand_name, 
         competitors_data,
-        research_results['brand_category']
+        research_results['brand_category'],
+        industry  # ✅ Pass industry to competitor extraction
     )
     
     # Research query 6: Industry trends and technologies
-    brand_industry = research_results['brand_category'].split()[0] if research_results['brand_category'] else brand_name
-    query_6 = f"{brand_industry} industry trends 2025 latest technologies innovations"
+    # ✅ ENHANCED: Use provided industry or extract from category
+    trend_industry = industry if industry else (research_results['brand_category'].split()[0] if research_results['brand_category'] else brand_name)
+    query_6 = f"{trend_industry} industry trends 2025 latest technologies innovations"
+    
     try:
         response_6 = tavily_client.search(
             query=query_6,
@@ -192,17 +212,10 @@ def conduct_deep_research(brand_name: str, product_name: Optional[str] = None,
 
 
 def extract_competitors_with_llm(brand_name: str, competitors_data: List[Dict], 
-                                 brand_category: str) -> List[str]:
+                                 brand_category: str, 
+                                 industry: Optional[str] = None) -> List[str]:  # ✅ ADDED industry param
     """
     Extract genuine competitors using Claude LLM for accurate identification
-    
-    Args:
-        brand_name: Main brand name to exclude
-        competitors_data: Research data from Tavily searches
-        brand_category: Brand's industry category
-    
-    Returns:
-        List of 5 genuine competitor brand names
     """
     
     if not anthropic_client:
@@ -224,10 +237,13 @@ def extract_competitors_with_llm(brand_name: str, competitors_data: List[Dict],
         print("Warning: No research text available for competitor extraction")
         return []
     
+    # ✅ ENHANCED: Include industry in prompt
+    industry_context = f"\nIndustry: {industry}" if industry else ""
+    
     # Create LLM prompt for competitor extraction
     prompt = f"""Based on the following market research about "{brand_name}", extract EXACTLY 5 genuine competitor brand names.
 
-Brand Category: {brand_category}
+Brand Category: {brand_category}{industry_context}
 
 Research Data:
 {research_text}
@@ -285,7 +301,7 @@ etc."""
         competitors = competitors[:5]
         
         if len(competitors) > 0:
-            print(f"✓ Extracted {len(competitors)} genuine competitors using LLM")
+            print(f"✅ Extracted {len(competitors)} genuine competitors using LLM")
             return competitors
         else:
             print("Warning: LLM returned no valid competitors, using fallback")

@@ -29,7 +29,7 @@ def calculate_scores(responses, brand_name, keywords=None):
         llm_name = response_data.get('llm_name', 'Claude')
         
         # Calculate individual score components
-        mention_score = calculate_mention_score(response_text, brand_name)
+        mention_score =  calculate_mention_score(response_text, brand_name)
         position_score = calculate_position_score(response_text, brand_name)
         richness_score = calculate_richness_score(response_text, brand_name)
         keyword_score = calculate_keyword_score(response_text, brand_name, keywords)

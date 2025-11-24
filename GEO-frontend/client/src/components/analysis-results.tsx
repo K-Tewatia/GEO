@@ -19,9 +19,12 @@ export function AnalysisResults({
   onNewAnalysis,
   sessionId,
 }: AnalysisResultsProps) {
+  // ✅ FIX: Find the score for the ACTUAL BRAND, not just the first item (which might be a competitor)
   const brandScore =
     results.brand_scores && results.brand_scores.length > 0
-      ? results.brand_scores[0]
+      ? results.brand_scores.find(
+          (score) => score.brand === results.brand_name
+        ) || results.brand_scores[0]  // Fallback to first if exact match not found
       : {
           brand: results.brand_name,
           mention_count: 0,
@@ -43,15 +46,14 @@ export function AnalysisResults({
     <div className="space-y-6">
       {/* Summary Metrics */}
       <SummaryMetrics
-        // FIX: Map 'totalPrompts' correctly
         totalPrompts={results.num_prompts || 0}
-        // FIX: Map 'mentionCount' (using brand mentions or avg mentions)
         mentionCount={brandScore.mention_count} 
-        // FIX: Map 'averagePosition'
         averagePosition={brandScore.average_position}
-        // FIX: Map 'visibilityScore' (was 'visibility')
         visibilityScore={brandScore.visibility_score} 
       />
+      
+      {/* Prompts Table */}
+      <PromptsTable responses={results.llm_responses || []} />
 
       {/* Dual Visibility Charts - Side by Side */}
       <DualVisibilityCharts
@@ -64,13 +66,9 @@ export function AnalysisResults({
       <div className="grid grid-cols-2 gap-4">
         <DomainCitationsTable citations={domainData} />
         <div>
-          {/* FIX: Map prop to 'shareOfVoice' (was 'data') */}
           <ShareOfVoiceChart shareOfVoice={shareOfVoiceData} />
         </div>
       </div>
-
-      {/* Prompts Table */}
-      <PromptsTable responses={results.llm_responses || []} />
 
       {/* Re-analyze Button & New Analysis Button */}
       <div className="space-y-2">

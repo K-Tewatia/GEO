@@ -149,8 +149,8 @@ def extract_ai_overview_text(ai_section) -> str:
         text_content = re.sub(r'\s+', ' ', text_content).strip()
         
         # Limit length to avoid overly long responses
-        if len(text_content) > 2000:
-            text_content = text_content[:2000] + "..."
+        if len(text_content) > 4000:
+            text_content = text_content[:4000] + "..."
         
         return text_content
     
